@@ -9,6 +9,15 @@ function fechaHoraCR(fecha) {
   return `${h}:${m}`;
 }
 
+// === Función utilitaria para mostrar la fecha (dd/mm/yyyy) ===
+function fechaCR(fecha) {
+  const d = new Date(fecha);
+  const day = d.getUTCDate().toString().padStart(2, "0");
+  const month = (d.getUTCMonth() + 1).toString().padStart(2, "0");
+  const year = d.getUTCFullYear();
+  return `${day}/${month}/${year}`;
+}
+
 export default function App() {
   const [pendientes, setPendientes] = useState([]);
   const [realizados, setRealizados] = useState([]);
@@ -178,7 +187,7 @@ export default function App() {
                   >
                     <div className="flex justify-between items-center mb-2">
                       <span className="font-semibold text-gray-800">
-                        {fechaHoraCR(a.fecha_hora)}
+                        {fechaCR(a.fecha_hora)} {fechaHoraCR(a.fecha_hora)}
                       </span>
                       <span className="text-xs italic text-gray-500">{a.metodo}</span>
                     </div>
