@@ -1,20 +1,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "./supabase";
 
-// === Función utilitaria para mostrar la hora exacta de Supabase ===
-function fechaHoraCR(fecha) {
-  const d = new Date(fecha);
-  const h = d.getUTCHours().toString().padStart(2, "0");
-  const m = d.getUTCMinutes().toString().padStart(2, "0");
-  return `${h}:${m}`;
-}
-
 export default function App() {
   const [pendientes, setPendientes] = useState([]);
   const [realizados, setRealizados] = useState([]);
   const [paciente, setPaciente] = useState(null);
-  const [ajustesManana, setAjustesManana] = useState([]);
-  const [mostrarManana, setMostrarManana] = useState(false);
+  const [hayManana, setHayManana] = useState(false);
   const [filtroTipo, setFiltroTipo] = useState("todos");
 
   useEffect(() => {
@@ -35,7 +26,7 @@ export default function App() {
     }
   }
 
-  // === Cargar ajustes de hoy y mañana ===
+  // === Cargar ajustes filtrados por fecha actual ===
   async function fetchAjustes() {
     const hoy = new Date();
     const yyyy = hoy.getFullYear();
@@ -50,7 +41,6 @@ export default function App() {
     const dd2 = String(manana.getDate()).padStart(2, "0");
     const mananaISO = `${yyyy2}-${mm2}-${dd2}`;
 
-    // Pendientes de hoy
     let queryPend = supabase
       .from("ajustes")
       .select("*")
@@ -59,7 +49,6 @@ export default function App() {
       .lt("fecha_hora", `${hoyISO}T23:59:59`)
       .order("fecha_hora", { ascending: true });
 
-    // Realizados de hoy
     let queryReal = supabase
       .from("ajustes")
       .select("*")
@@ -78,20 +67,14 @@ export default function App() {
     setPendientes(pend || []);
     setRealizados(real || []);
 
-    // Ajustes de mañana
-    let queryManana = supabase
+    // === Verificar si hay ajustes mañana ===
+    const { data: ajustesManana } = await supabase
       .from("ajustes")
-      .select("*")
+      .select("id")
       .gte("fecha_hora", `${mananaISO}T00:00:00`)
-      .lt("fecha_hora", `${mananaISO}T23:59:59`)
-      .order("fecha_hora", { ascending: true });
+      .lt("fecha_hora", `${mananaISO}T23:59:59`);
 
-    if (filtroTipo !== "todos") {
-      queryManana = queryManana.eq("metodo", filtroTipo);
-    }
-
-    const { data: man } = await queryManana;
-    setAjustesManana(man || []);
+    setHayManana(ajustesManana && ajustesManana.length > 0);
   }
 
   async function marcarRealizado(id) {
@@ -109,70 +92,37 @@ export default function App() {
     <div className="min-h-screen bg-gray-100 flex items-center justify-center">
       <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-gray-200">
         
-        {/* Header institucional con logos */}
-        <header className="bg-blue-900 text-white py-4 shadow px-4 flex items-center justify-between">
-          {/* Logo izquierda */}
-          <img
-            src="/logo.jpg"
-            alt="Logo INS"
-            className="w-12 h-12 rounded-full shadow-md object-contain"
-          />
+        {/* Header institucional */}
+        <header className="bg-blue-900 text-white py-4 shadow px-4">
+          <h1 className="text-base font-bold text-center">Control de Ajustes</h1>
+          <span className="text-xs italic block text-center">
+            ({tituloFiltro()})
+          </span>
 
-          {/* Centro */}
-          <div className="flex-1 text-center px-2">
-            <h1 className="text-base font-bold">Control de Ajustes</h1>
-            <span className="text-xs italic block">({tituloFiltro()})</span>
-
-            {/* Datos del paciente */}
-            {paciente && (
-              <div className="text-xs mt-2 bg-blue-800 p-2 rounded-lg text-left">
-                <p><b>Paciente:</b> {paciente.patient_id}</p>
-                <p><b>Case ID:</b> {paciente.case_id}</p>
-                <p><b>Descripción:</b> {paciente.case_description}</p>
-                <p><b>Hueso:</b> {paciente.bone_type}</p>
-                <p><b>Lado:</b> {paciente.side}</p>
-              </div>
-            )}
-
-            {/* Contadores */}
-            <div className="text-[11px] mt-2 flex justify-between">
-              <span>⏳ Pendientes: {pendientes.length}</span>
-              <span>✅ Confirmados: {realizados.length}</span>
+          {/* Datos del paciente */}
+          {paciente && (
+            <div className="text-xs mt-2 bg-blue-800 p-2 rounded-lg">
+              <p><b>Paciente:</b> {paciente.patient_id}</p>
+              <p><b>Case ID:</b> {paciente.case_id}</p>
+              <p><b>Descripción:</b> {paciente.case_description}</p>
+              <p><b>Hueso:</b> {paciente.bone_type}</p>
+              <p><b>Lado:</b> {paciente.side}</p>
             </div>
+          )}
 
-            {/* Aviso ajustes mañana */}
-            {ajustesManana.length > 0 && (
-              <button
-                onClick={() => setMostrarManana(!mostrarManana)}
-                className="mt-2 text-yellow-400 text-xs font-semibold underline w-full"
-              >
-                ⚠️ Hay {ajustesManana.length} ajustes programados para mañana ({filtroTipo})
-              </button>
-            )}
+          {/* Contadores */}
+          <div className="text-[11px] mt-2 flex justify-between">
+            <span>⏳ Pendientes: {pendientes.length}</span>
+            <span>✅ Confirmados: {realizados.length}</span>
           </div>
 
-          {/* Logo derecha */}
-          <img
-            src="/medicas.png"
-            alt="Médicas"
-            className="w-12 h-12 object-contain"
-          />
+          {/* Aviso ajustes mañana */}
+          {hayManana && (
+            <p className="mt-1 text-yellow-400 text-xs text-center font-semibold">
+              ⚠️ Hay ajustes programados para mañana
+            </p>
+          )}
         </header>
-
-        {/* Lista de mañana */}
-        {mostrarManana && (
-          <div className="bg-yellow-50 text-gray-800 p-3 border-b border-yellow-300">
-            <h3 className="text-sm font-semibold mb-2">Ajustes para mañana</h3>
-            <ul className="space-y-1 text-xs">
-              {ajustesManana.map((a) => (
-                <li key={a.id} className="flex justify-between">
-                  <span>{fechaHoraCR(a.fecha_hora)}</span>
-                  <span className="italic">{a.metodo}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
 
         {/* Selector de filtro */}
         <div className="bg-gray-50 flex justify-around py-3 border-b">
@@ -206,7 +156,7 @@ export default function App() {
                     className="p-4 rounded-2xl border border-gray-100 shadow-sm bg-white"
                   >
                     <p className="font-semibold text-gray-800 text-sm">
-                      {fechaHoraCR(a.fecha_hora)}
+                      {new Date(a.fecha_hora).toLocaleString()}
                     </p>
                     <p className="text-xs text-gray-500 italic">Método: {a.metodo}</p>
                     <p className="mt-2 text-gray-600 text-sm">
@@ -238,7 +188,7 @@ export default function App() {
                   >
                     <div>
                       <span className="text-gray-800 text-sm block">
-                        {fechaHoraCR(a.fecha_hora)}
+                        {new Date(a.fecha_hora).toLocaleString()}
                       </span>
                       <span className="text-xs text-gray-500 italic">Método: {a.metodo}</span>
                     </div>
