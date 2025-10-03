@@ -25,6 +25,7 @@ export default function App() {
   const [ajustesManana, setAjustesManana] = useState([]);
   const [mostrarManana, setMostrarManana] = useState(false);
   const [filtroTipo, setFiltroTipo] = useState("todos");
+  const [mensaje, setMensaje] = useState(null);
 
   useEffect(() => {
     fetchPaciente();
@@ -103,8 +104,21 @@ export default function App() {
     setAjustesManana(man || []);
   }
 
-  async function marcarRealizado(id) {
-    await supabase.from("ajustes").update({ realizado: true }).eq("id", id);
+  // === Confirmar ajuste ===
+  async function marcarRealizado(id, metodo) {
+    const { error } = await supabase
+      .from("ajustes")
+      .update({ realizado: true, modo_aplicacion: metodo })
+      .eq("id", id);
+
+    if (error) {
+      console.error("Error al actualizar ajuste:", error);
+      setMensaje("❌ Error al confirmar el ajuste");
+    } else {
+      setMensaje("✅ Ajuste confirmado");
+    }
+
+    setTimeout(() => setMensaje(null), 2500);
     fetchAjustes();
   }
 
@@ -117,22 +131,22 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center">
       <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-gray-200">
-        
-        {/* Header institucional con logos */}
-        <header className="bg-blue-900 text-white py-4 shadow px-4 flex items-center justify-between">
-          {/* Logo izquierda */}
-          <img
-            src="/logo.jpg"
-            alt="Logo INS"
-            className="w-12 h-12 rounded-full shadow-md object-contain"
-          />
 
-          {/* Centro */}
+        {/* Toast */}
+        {mensaje && (
+          <div className="fixed inset-0 flex items-center justify-center z-50">
+            <div className="bg-black text-white px-6 py-3 rounded-lg shadow-lg text-base font-semibold animate-fade">
+              {mensaje}
+            </div>
+          </div>
+        )}
+
+        {/* Header */}
+        <header className="bg-blue-900 text-white py-4 shadow px-4 flex items-center justify-between">
+          <img src="/logo.jpg" alt="Logo INS" className="w-12 h-12 rounded-full shadow-md object-contain" />
           <div className="flex-1 text-center px-2">
             <h1 className="text-base font-bold">Control de Ajustes</h1>
             <span className="text-xs italic block">({tituloFiltro()})</span>
-
-            {/* Datos del paciente */}
             {paciente && (
               <div className="text-xs mt-2 bg-blue-800 p-2 rounded-lg text-left">
                 <p><b>Paciente:</b> {paciente.patient_id}</p>
@@ -142,14 +156,10 @@ export default function App() {
                 <p><b>Lado:</b> {paciente.side}</p>
               </div>
             )}
-
-            {/* Contadores */}
             <div className="text-[11px] mt-2 flex justify-between">
               <span>⏳ Pendientes: {pendientes.length}</span>
               <span>✅ Confirmados: {realizados.length}</span>
             </div>
-
-            {/* Aviso ajustes mañana */}
             {ajustesManana.length > 0 && (
               <button
                 onClick={() => setMostrarManana(!mostrarManana)}
@@ -159,13 +169,7 @@ export default function App() {
               </button>
             )}
           </div>
-
-          {/* Logo derecha */}
-          <img
-            src="/medicas.png"
-            alt="Médicas"
-            className="w-12 h-12 object-contain"
-          />
+          <img src="/medicas.png" alt="Médicas" className="w-12 h-12 object-contain" />
         </header>
 
         {/* Ajustes de mañana */}
@@ -175,16 +179,11 @@ export default function App() {
               Ajustes programados para mañana
             </h2>
             {ajustesManana.length === 0 ? (
-              <p className="text-gray-400 text-sm text-center">
-                No hay ajustes programados
-              </p>
+              <p className="text-gray-400 text-sm text-center">No hay ajustes programados</p>
             ) : (
               <ul className="space-y-3">
                 {ajustesManana.map((a) => (
-                  <li
-                    key={a.id}
-                    className="p-3 rounded-xl border border-gray-200 bg-white shadow-sm"
-                  >
+                  <li key={a.id} className="p-3 rounded-xl border border-gray-200 bg-white shadow-sm">
                     <div className="flex justify-between items-center mb-2">
                       <span className="font-semibold text-gray-800">
                         {fechaCR(a.fecha_hora)} {fechaHoraCR(a.fecha_hora)}
@@ -198,19 +197,24 @@ export default function App() {
                 ))}
               </ul>
             )}
+            {/* Botón volver */}
+            <button
+              onClick={() => setMostrarManana(false)}
+              className="mt-4 w-full py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold shadow hover:opacity-90 transition"
+            >
+              ← Volver a ajustes de hoy
+            </button>
           </section>
         )}
 
-        {/* Selector de filtro */}
+        {/* Selector filtro */}
         <div className="bg-gray-50 flex justify-around py-3 border-b">
           {["todos", "Clicks", "Length"].map((tipo) => (
             <button
               key={tipo}
               onClick={() => setFiltroTipo(tipo)}
               className={`px-4 py-2 rounded-full text-sm font-medium transition ${
-                filtroTipo === tipo
-                  ? "bg-blue-700 text-white shadow-md"
-                  : "bg-white text-gray-700 border"
+                filtroTipo === tipo ? "bg-blue-700 text-white shadow-md" : "bg-white text-gray-700 border"
               }`}
             >
               {tipo}
@@ -228,19 +232,16 @@ export default function App() {
             ) : (
               <div className="space-y-4">
                 {pendientes.map((a) => (
-                  <div
-                    key={a.id}
-                    className="p-4 rounded-2xl border border-gray-100 shadow-sm bg-white"
-                  >
+                  <div key={a.id} className="p-4 rounded-2xl border border-gray-100 shadow-sm bg-white">
                     <p className="font-semibold text-gray-800 text-sm">
-                      {fechaHoraCR(a.fecha_hora)}
+                      {fechaCR(a.fecha_hora)} {fechaHoraCR(a.fecha_hora)}
                     </p>
                     <p className="text-xs text-gray-500 italic">Método: {a.metodo}</p>
                     <p className="mt-2 text-gray-600 text-sm">
                       🔴 {a.red} | 🟠 {a.orange} | 🟡 {a.yellow} | 🟢 {a.green} | 🔵 {a.blue} | 🟣 {a.purple}
                     </p>
                     <button
-                      onClick={() => marcarRealizado(a.id)}
+                      onClick={() => marcarRealizado(a.id, a.metodo)}
                       className="mt-3 w-full py-2 rounded-xl bg-gradient-to-r from-green-600 to-blue-600 text-white font-semibold shadow hover:opacity-90 transition"
                     >
                       Confirmar realizado
@@ -259,15 +260,17 @@ export default function App() {
             ) : (
               <ul className="space-y-2">
                 {realizados.map((a) => (
-                  <li
-                    key={a.id}
-                    className="p-3 rounded-xl border border-gray-100 flex items-center justify-between shadow-sm bg-white"
-                  >
+                  <li key={a.id} className="p-3 rounded-xl border border-gray-100 flex items-center justify-between shadow-sm bg-white">
                     <div>
                       <span className="text-gray-800 text-sm block">
-                        {fechaHoraCR(a.fecha_hora)}
+                        {fechaCR(a.fecha_hora)} {fechaHoraCR(a.fecha_hora)}
                       </span>
                       <span className="text-xs text-gray-500 italic">Método: {a.metodo}</span>
+                      {a.modo_aplicacion && (
+                        <span className="text-[10px] block text-blue-600">
+                          Aplicado por: {a.modo_aplicacion}
+                        </span>
+                      )}
                     </div>
                     <span className="text-green-600 font-bold text-lg">✅</span>
                   </li>
