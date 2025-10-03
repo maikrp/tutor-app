@@ -159,19 +159,37 @@ export default function App() {
           />
         </header>
 
-        {/* Lista de mañana */}
+        {/* Ajustes de mañana */}
         {mostrarManana && (
-          <div className="bg-yellow-50 text-gray-800 p-3 border-b border-yellow-300">
-            <h3 className="text-sm font-semibold mb-2">Ajustes para mañana</h3>
-            <ul className="space-y-1 text-xs">
-              {ajustesManana.map((a) => (
-                <li key={a.id} className="flex justify-between">
-                  <span>{fechaHoraCR(a.fecha_hora)}</span>
-                  <span className="italic">{a.metodo}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <section className="p-4 border-b bg-yellow-50">
+            <h2 className="text-base font-semibold text-gray-700 mb-3">
+              Ajustes programados para mañana
+            </h2>
+            {ajustesManana.length === 0 ? (
+              <p className="text-gray-400 text-sm text-center">
+                No hay ajustes programados
+              </p>
+            ) : (
+              <ul className="space-y-3">
+                {ajustesManana.map((a) => (
+                  <li
+                    key={a.id}
+                    className="p-3 rounded-xl border border-gray-200 bg-white shadow-sm"
+                  >
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-semibold text-gray-800">
+                        {fechaHoraCR(a.fecha_hora)}
+                      </span>
+                      <span className="text-xs italic text-gray-500">{a.metodo}</span>
+                    </div>
+                    <p className="text-sm text-gray-700">
+                      🔴 {a.red} | 🟠 {a.orange} | 🟡 {a.yellow} | 🟢 {a.green} | 🔵 {a.blue} | 🟣 {a.purple}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
         )}
 
         {/* Selector de filtro */}
@@ -191,7 +209,7 @@ export default function App() {
           ))}
         </div>
 
-        {/* Contenido */}
+        {/* Contenido principal */}
         <main className="flex-1 overflow-y-auto p-4 space-y-6">
           {/* Pendientes */}
           <section>
